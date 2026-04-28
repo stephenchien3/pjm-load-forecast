@@ -51,9 +51,37 @@ def add_lag_features(
     return out
 
 
-def add_rolling_features(*args, **kwargs):  # implemented in Task 7
-    raise NotImplementedError
+def add_rolling_features(
+    df: pd.DataFrame,
+    windows: Iterable[int],
+    column: str = "MW",
+) -> pd.DataFrame:
+    """Return a copy of ``df`` with ``rollmean_{w}`` columns for each window.
+
+    Each rolling mean uses only past values: it is computed on a 1-step
+    shifted series, so no future leakage.
+    """
+    windows = list(windows)
+    if any(w <= 0 for w in windows):
+        raise ValueError(f"All windows must be positive; got {windows}")
+    out = df.copy()
+    shifted = out[column].shift(1)
+    for w in windows:
+        out[f"rollmean_{w}"] = shifted.rolling(window=w, min_periods=w).mean()
+    return out
 
 
-def build_design_matrix(*args, **kwargs):  # implemented in Task 7
-    raise NotImplementedError
+def build_design_matrix(
+    df: pd.DataFrame,
+    target: str = "MW",
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Drop rows with NaNs and return ``(X, y)`` aligned by index.
+
+    The target column is removed from ``X``.
+    """
+    if target not in df.columns:
+        raise KeyError(f"target column {target!r} not in DataFrame")
+    clean = df.dropna()
+    y = clean[target]
+    X = clean.drop(columns=[target])
+    return X, y

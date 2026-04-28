@@ -65,3 +65,39 @@ class TestLagFeatures:
     def test_negative_lag_raises(self, synthetic_hourly_series):
         with pytest.raises(ValueError):
             add_lag_features(synthetic_hourly_series, lags=[-1])
+
+
+class TestRollingFeatures:
+    def test_columns_added(self, synthetic_hourly_series):
+        out = add_rolling_features(synthetic_hourly_series, windows=[24, 168])
+        assert "rollmean_24" in out.columns
+        assert "rollmean_168" in out.columns
+
+    def test_rolling_mean_uses_only_past(self, synthetic_hourly_series):
+        out = add_rolling_features(synthetic_hourly_series, windows=[3])
+        mw = synthetic_hourly_series["MW"]
+        expected = mw.shift(1).rolling(window=3, min_periods=3).mean()
+        pd.testing.assert_series_equal(
+            out["rollmean_3"], expected, check_names=False
+        )
+
+    def test_invalid_window_raises(self, synthetic_hourly_series):
+        with pytest.raises(ValueError):
+            add_rolling_features(synthetic_hourly_series, windows=[0])
+
+
+class TestBuildDesignMatrix:
+    def test_returns_aligned_x_y_with_no_nans(self, synthetic_hourly_series):
+        feats = add_calendar_features(synthetic_hourly_series)
+        feats = add_lag_features(feats, lags=[1, 24])
+        feats = add_rolling_features(feats, windows=[24])
+        X, y = build_design_matrix(feats, target="MW")
+        assert not X.isna().any().any()
+        assert not y.isna().any()
+        assert len(X) == len(y)
+        assert "MW" not in X.columns
+        assert len(X) == len(synthetic_hourly_series) - 24
+
+    def test_target_must_exist(self, synthetic_hourly_series):
+        with pytest.raises(KeyError):
+            build_design_matrix(synthetic_hourly_series, target="nope")
