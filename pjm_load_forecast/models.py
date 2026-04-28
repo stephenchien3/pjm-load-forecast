@@ -38,9 +38,27 @@ class SeasonalNaive:
         return X[col].to_numpy(dtype=float)
 
 
-class LinearModel:  # implemented in next task
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError
+class LinearModel:
+    """Ridge regression on the full design matrix, with feature scaling."""
+
+    def __init__(self, alpha: float = 1.0):
+        self.alpha = alpha
+        self._pipeline: Optional[Pipeline] = None
+
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "LinearModel":
+        self._pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("ridge", Ridge(alpha=self.alpha)),
+            ]
+        )
+        self._pipeline.fit(X.to_numpy(), y.to_numpy())
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        if self._pipeline is None:
+            raise RuntimeError("LinearModel.predict() called before fit()")
+        return self._pipeline.predict(X.to_numpy())
 
 
 class GradientBoostingModel:  # implemented in next task

@@ -44,3 +44,28 @@ class TestSeasonalNaive:
         model = SeasonalNaive(lag=168)
         with pytest.raises(KeyError):
             model.predict(X)
+
+
+class TestLinearModel:
+    def test_recovers_known_slope_on_noiseless_data(self):
+        rng = np.random.default_rng(0)
+        X = pd.DataFrame({"a": rng.normal(0, 1, 200), "b": rng.normal(0, 1, 200)})
+        y = pd.Series(3.0 * X["a"] - 2.0 * X["b"] + 5.0)
+        model = LinearModel(alpha=0.0)
+        model.fit(X, y)
+        preds = model.predict(X)
+        rmse = float(np.sqrt(np.mean((preds - y.to_numpy()) ** 2)))
+        assert rmse < 1e-6
+
+    def test_predict_shape(self):
+        X = pd.DataFrame({"a": np.arange(20.0)})
+        y = pd.Series(np.arange(20.0) * 2)
+        model = LinearModel()
+        model.fit(X, y)
+        preds = model.predict(X)
+        assert preds.shape == (20,)
+
+    def test_predict_before_fit_raises(self):
+        model = LinearModel()
+        with pytest.raises(RuntimeError):
+            model.predict(pd.DataFrame({"a": [1.0, 2.0]}))
