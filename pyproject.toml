@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pjm_load_forecast"
+version = "0.1.0"
+description = "Hourly electricity load forecasting for the PJM grid."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Stephen Chien", email = "stephenlchien@gmail.com"}]
+license = {text = "MIT"}
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+pjm-forecast = "pjm_load_forecast.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pjm_load_forecast*"]
+
+[tool.setuptools.package-data]
+pjm_load_forecast = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["pjm_load_forecast"]
+omit = ["*/cli.py"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
