@@ -61,6 +61,33 @@ class LinearModel:
         return self._pipeline.predict(X.to_numpy())
 
 
-class GradientBoostingModel:  # implemented in next task
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError
+class GradientBoostingModel:
+    """Histogram gradient boosting on the full design matrix."""
+
+    def __init__(
+        self,
+        max_iter: int = 200,
+        learning_rate: float = 0.05,
+        max_depth: Optional[int] = 8,
+        random_state: int = 0,
+    ):
+        self.max_iter = max_iter
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+        self.random_state = random_state
+        self._model: Optional[HistGradientBoostingRegressor] = None
+
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "GradientBoostingModel":
+        self._model = HistGradientBoostingRegressor(
+            max_iter=self.max_iter,
+            learning_rate=self.learning_rate,
+            max_depth=self.max_depth,
+            random_state=self.random_state,
+        )
+        self._model.fit(X.to_numpy(), y.to_numpy())
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        if self._model is None:
+            raise RuntimeError("GradientBoostingModel.predict() called before fit()")
+        return self._model.predict(X.to_numpy())

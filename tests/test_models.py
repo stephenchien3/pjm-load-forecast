@@ -69,3 +69,29 @@ class TestLinearModel:
         model = LinearModel()
         with pytest.raises(RuntimeError):
             model.predict(pd.DataFrame({"a": [1.0, 2.0]}))
+
+
+class TestGradientBoostingModel:
+    def test_beats_mean_predictor_on_signal(self):
+        rng = np.random.default_rng(0)
+        X = pd.DataFrame({"x": rng.uniform(0, 10, 500)})
+        y = pd.Series(np.sin(X["x"]) * 5 + rng.normal(0, 0.1, 500))
+        model = GradientBoostingModel(max_iter=100, learning_rate=0.05)
+        model.fit(X, y)
+        preds = model.predict(X)
+        gbm_rmse = float(np.sqrt(np.mean((preds - y.to_numpy()) ** 2)))
+        mean_rmse = float(np.sqrt(np.mean((y.mean() - y.to_numpy()) ** 2)))
+        assert gbm_rmse < 0.5 * mean_rmse
+
+    def test_predict_shape(self):
+        X = pd.DataFrame({"a": np.arange(50.0)})
+        y = pd.Series(np.arange(50.0) ** 0.5)
+        model = GradientBoostingModel(max_iter=20)
+        model.fit(X, y)
+        preds = model.predict(X)
+        assert preds.shape == (50,)
+
+    def test_predict_before_fit_raises(self):
+        model = GradientBoostingModel()
+        with pytest.raises(RuntimeError):
+            model.predict(pd.DataFrame({"a": [1.0, 2.0]}))
