@@ -36,8 +36,19 @@ def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def add_lag_features(*args, **kwargs):  # implemented in Task 6
-    raise NotImplementedError
+def add_lag_features(
+    df: pd.DataFrame,
+    lags: Iterable[int],
+    column: str = "MW",
+) -> pd.DataFrame:
+    """Return a copy of ``df`` with ``lag_{k}`` columns for each ``k`` in ``lags``."""
+    lags = list(lags)
+    if any(l <= 0 for l in lags):
+        raise ValueError(f"All lags must be positive; got {lags}")
+    out = df.copy()
+    for lag in lags:
+        out[f"lag_{lag}"] = out[column].shift(lag)
+    return out
 
 
 def add_rolling_features(*args, **kwargs):  # implemented in Task 7

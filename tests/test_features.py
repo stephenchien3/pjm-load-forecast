@@ -41,3 +41,27 @@ class TestCalendarFeatures:
         before = synthetic_hourly_series.copy()
         _ = add_calendar_features(synthetic_hourly_series)
         pd.testing.assert_frame_equal(synthetic_hourly_series, before)
+
+
+class TestLagFeatures:
+    def test_columns_added(self, synthetic_hourly_series):
+        out = add_lag_features(synthetic_hourly_series, lags=[1, 24, 168])
+        assert "lag_1" in out.columns
+        assert "lag_24" in out.columns
+        assert "lag_168" in out.columns
+
+    def test_lag_equals_shifted_value(self, synthetic_hourly_series):
+        out = add_lag_features(synthetic_hourly_series, lags=[1, 5])
+        for lag in [1, 5]:
+            expected = synthetic_hourly_series["MW"].shift(lag)
+            pd.testing.assert_series_equal(
+                out[f"lag_{lag}"], expected, check_names=False
+            )
+
+    def test_empty_lags_is_noop(self, synthetic_hourly_series):
+        out = add_lag_features(synthetic_hourly_series, lags=[])
+        pd.testing.assert_frame_equal(out, synthetic_hourly_series)
+
+    def test_negative_lag_raises(self, synthetic_hourly_series):
+        with pytest.raises(ValueError):
+            add_lag_features(synthetic_hourly_series, lags=[-1])
