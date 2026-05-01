@@ -23,9 +23,18 @@
   .card dd { margin: 0; font-variant-numeric: tabular-nums; }
   canvas { width: 100% !important; height: 420px !important; }
   .notes { margin-top: 1.75rem; max-width: 70ch; }
-  .notes h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
+  .notes h2 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+  .notes h2:first-child { margin-top: 0; }
   .notes p { margin: 0 0 .75rem; }
-  .notes .metric-defs { color: #555; font-size: .9rem; }
+  .notes ul.legend { list-style: none; padding: 0; margin: 0 0 .75rem; }
+  .notes ul.legend li { margin: .15rem 0; }
+  .notes .dot { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: .25rem; }
+  .notes .dot.black { background: #111; height: 2px; }
+  .notes .dot.blue { background: #1a73e8; }
+  .notes .dot.red { background: #d93025; }
+  .notes dl.glossary { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0 0 .25rem; }
+  .notes dl.glossary dt { font-weight: 600; }
+  .notes dl.glossary dd { margin: 0; }
   footer { color: #888; font-size: .85rem; margin-top: 1.5rem; }
   .loading { color: #888; padding: 2rem 0; }
 </style>
@@ -88,7 +97,7 @@ function App() {
       <header>
         <div>
           <h1>PJM hourly load forecast</h1>
-          <p className="sub">Last 30 days of actual MW vs. two models held out from training.</p>
+          <p className="sub">Predicting hourly electricity demand on the U.S. mid-Atlantic power grid.</p>
         </div>
         <nav className="links">
           <a href="https://github.com/stephenchien3/pjm-load-forecast" target="_blank" rel="noopener">GitHub</a>
@@ -104,33 +113,74 @@ function App() {
           </div>
           <ForecastChart data={data} />
           <section className="notes">
-            <h2>What you're looking at</h2>
+            <h2>The 30-second version</h2>
             <p>
-              The chart shows the final 30 days of the dataset, held out from training.
-              The black line is the actual hourly load on the PJM East zone.
-              The blue line is the gradient-boosting model's prediction; the red dashed
-              line is a <em>seasonal naive</em> baseline that just predicts the value from
-              the same hour one week ago.
+              Every hour, the U.S. power grid has to generate almost exactly as much
+              electricity as people are using — you can't easily store it.
+              Grid operators forecast demand in advance so they know how many power plants
+              to turn on. This page shows two ways of doing that forecast and how they compare.
+            </p>
+
+            <h2>Glossary</h2>
+            <dl className="glossary">
+              <dt>PJM</dt>
+              <dd>
+                The grid operator for 13 states from New Jersey to Illinois — about 65 million
+                people. They publish hourly demand data going back to 2002.
+              </dd>
+              <dt>Load</dt>
+              <dd>Total electricity being used at one moment, summed across every house, business, and factory on the grid.</dd>
+              <dt>MW (megawatt)</dt>
+              <dd>
+                A unit of electric power. 1 MW ≈ enough to power ~750 average U.S. homes
+                at once. PJM East peaks around 60,000 MW on a hot summer afternoon.
+              </dd>
+              <dt>Hour-ahead forecast</dt>
+              <dd>"Given everything we know up to now, how much electricity will the grid use next hour?"</dd>
+            </dl>
+
+            <h2>The chart</h2>
+            <p>
+              This is the last 30 days of the dataset (mid-2018), which neither model was
+              allowed to see during training — so it's a fair test.
+            </p>
+            <ul className="legend">
+              <li><span className="dot black" /> <strong>Actual</strong> — what really happened</li>
+              <li><span className="dot blue" /> <strong>Gradient boosting</strong> — the smarter model's guess</li>
+              <li><span className="dot red" /> <strong>Seasonal naive</strong> — a dumb baseline: "just predict whatever happened this same hour, exactly one week ago"</li>
+            </ul>
+            <p>
+              The two daily bumps are the morning and evening demand peak (people waking up,
+              then coming home and turning on lights / AC). The wider valleys are weekends,
+              when factories and offices are quiet.
+            </p>
+
+            <h2>Why one model wins</h2>
+            <p>
+              The seasonal-naive baseline is right whenever this week looks like last week.
+              It falls apart during heat waves, holidays, or any week that <em>doesn't</em>
+              look like last week — that's most of them. It ends up about{' '}
+              {fmt(data.metrics.seasonal_naive.mape * 100, 1)}% off on a typical hour.
             </p>
             <p>
-              The double-hump within each day is the morning and evening demand peak;
-              the wider dips are weekends. Gradient boosting tracks both patterns closely
-              ({fmt(data.metrics.gbm.mape * 100, 2)}% MAPE), while the week-ago baseline drifts whenever
-              load shifts week-to-week — a heat wave, a holiday, a cool stretch — and lands
-              at {fmt(data.metrics.seasonal_naive.mape * 100, 2)}% MAPE, roughly{' '}
-              {fmt(data.metrics.seasonal_naive.mape / data.metrics.gbm.mape, 0)}× worse.
+              The gradient-boosting model is a forest of small decision trees that learns from
+              the calendar (hour of day, day of week, month, weekend or not) plus what the load
+              actually was 1 hour ago, 24 hours ago, and a week ago. Because it can <em>combine</em>
+              those signals — "it's 6 PM on a hot August Tuesday and load was already high an
+              hour ago" — it lands within about{' '}
+              {fmt(data.metrics.gbm.mape * 100, 1)}% of the truth, roughly{' '}
+              {fmt(data.metrics.seasonal_naive.mape / data.metrics.gbm.mape, 0)}× more accurate.
             </p>
-            <p>
-              The gradient-boosting model gets calendar features (hour, day-of-week, month,
-              weekend flag) plus three lagged values of load itself: 1 hour ago, 24 hours ago,
-              and 168 hours ago. Most of its lift over the baseline comes from being able to
-              <em> blend</em> those lags rather than mechanically copying one of them.
-            </p>
-            <p className="metric-defs">
-              <strong>MAE</strong> is mean absolute error in MW.{' '}
-              <strong>RMSE</strong> penalises larger misses more heavily.{' '}
-              <strong>MAPE</strong> expresses the typical error as a percentage of actual load.
-            </p>
+
+            <h2>Reading the error numbers</h2>
+            <dl className="glossary">
+              <dt>MAE</dt>
+              <dd>Mean Absolute Error: on a typical hour, how many MW were we off by? Lower is better.</dd>
+              <dt>RMSE</dt>
+              <dd>Root Mean Squared Error: like MAE but punishes big misses more than small ones. Useful because being 5,000 MW short for one hour is much worse than being 500 MW short for ten hours.</dd>
+              <dt>MAPE</dt>
+              <dd>Mean Absolute Percentage Error: the typical miss expressed as a % of actual demand. Easiest to compare across grids of different sizes.</dd>
+            </dl>
           </section>
         </>
       ) : <p className="loading">Loading forecast…</p>}
