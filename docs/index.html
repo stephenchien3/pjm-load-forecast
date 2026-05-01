@@ -22,6 +22,10 @@
   .card dt { color: #666; }
   .card dd { margin: 0; font-variant-numeric: tabular-nums; }
   canvas { width: 100% !important; height: 420px !important; }
+  .notes { margin-top: 1.75rem; max-width: 70ch; }
+  .notes h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
+  .notes p { margin: 0 0 .75rem; }
+  .notes .metric-defs { color: #555; font-size: .9rem; }
   footer { color: #888; font-size: .85rem; margin-top: 1.5rem; }
   .loading { color: #888; padding: 2rem 0; }
 </style>
@@ -99,6 +103,35 @@ function App() {
             <MetricCard title="Gradient boosting" m={data.metrics.gbm} />
           </div>
           <ForecastChart data={data} />
+          <section className="notes">
+            <h2>What you're looking at</h2>
+            <p>
+              The chart shows the final 30 days of the dataset, held out from training.
+              The black line is the actual hourly load on the PJM East zone.
+              The blue line is the gradient-boosting model's prediction; the red dashed
+              line is a <em>seasonal naive</em> baseline that just predicts the value from
+              the same hour one week ago.
+            </p>
+            <p>
+              The double-hump within each day is the morning and evening demand peak;
+              the wider dips are weekends. Gradient boosting tracks both patterns closely
+              ({fmt(data.metrics.gbm.mape * 100, 2)}% MAPE), while the week-ago baseline drifts whenever
+              load shifts week-to-week — a heat wave, a holiday, a cool stretch — and lands
+              at {fmt(data.metrics.seasonal_naive.mape * 100, 2)}% MAPE, roughly{' '}
+              {fmt(data.metrics.seasonal_naive.mape / data.metrics.gbm.mape, 0)}× worse.
+            </p>
+            <p>
+              The gradient-boosting model gets calendar features (hour, day-of-week, month,
+              weekend flag) plus three lagged values of load itself: 1 hour ago, 24 hours ago,
+              and 168 hours ago. Most of its lift over the baseline comes from being able to
+              <em> blend</em> those lags rather than mechanically copying one of them.
+            </p>
+            <p className="metric-defs">
+              <strong>MAE</strong> is mean absolute error in MW.{' '}
+              <strong>RMSE</strong> penalises larger misses more heavily.{' '}
+              <strong>MAPE</strong> expresses the typical error as a percentage of actual load.
+            </p>
+          </section>
         </>
       ) : <p className="loading">Loading forecast…</p>}
 
