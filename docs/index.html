@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PJM Load Forecast</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  h1 { margin: 0 0 .25rem; }
+  .sub { color: #666; margin-bottom: 1.25rem; }
+  .links a { margin-left: 1rem; color: inherit; }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0 1.5rem; }
+  .card { border: 1px solid #ddd; border-radius: 8px; padding: .75rem 1rem; }
+  .card h3 { margin: 0 0 .25rem; font-size: 1rem; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .75rem; margin: 0; }
+  .card dt { color: #666; }
+  .card dd { margin: 0; font-variant-numeric: tabular-nums; }
+  canvas { width: 100% !important; height: 420px !important; }
+  footer { color: #888; font-size: .85rem; margin-top: 1.5rem; }
+  .loading { color: #888; padding: 2rem 0; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #111; color: #eee; }
+    .sub, .card dt, footer, .loading { color: #aaa; }
+    .card { border-color: #333; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useEffect, useState, useRef } = React;
+
+const fmt = (x, d = 0) => x.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+
+function MetricCard({ title, m }) {
+  return (
+    <div className="card">
+      <h3>{title}</h3>
+      <dl>
+        <dt>MAE</dt><dd>{fmt(m.mae, 0)} MW</dd>
+        <dt>RMSE</dt><dd>{fmt(m.rmse, 0)} MW</dd>
+        <dt>MAPE</dt><dd>{fmt(m.mape * 100, 2)}%</dd>
+      </dl>
+    </div>
+  );
+}
+
+function ForecastChart({ data }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const chart = new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels: data.timestamps,
+        datasets: [
+          { label: 'Actual', data: data.actual, borderColor: '#111', borderWidth: 1.5, pointRadius: 0 },
+          { label: 'Gradient boosting', data: data.gbm, borderColor: '#1a73e8', borderWidth: 1.25, pointRadius: 0 },
+          { label: 'Seasonal naive', data: data.seasonal_naive, borderColor: '#d93025', borderWidth: 1, pointRadius: 0, borderDash: [4, 3] },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, callback: function (v) { return this.getLabelForValue(v).slice(0, 10); } } },
+          y: { title: { display: true, text: 'MW' } },
+        },
+        plugins: { legend: { position: 'bottom' } },
+      },
+    });
+    return () => chart.destroy();
+  }, [data]);
+  return <canvas ref={ref} />;
+}
+
+function App() {
+  const [data, setData] = useState(null);
+  useEffect(() => { fetch('data.json').then(r => r.json()).then(setData); }, []);
+
+  return (
+    <>
+      <header>
+        <div>
+          <h1>PJM hourly load forecast</h1>
+          <p className="sub">Last 30 days of actual MW vs. two models held out from training.</p>
+        </div>
+        <nav className="links">
+          <a href="https://github.com/stephenchien3/pjm-load-forecast" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://stephenchien3.github.io/pjm-load-forecast/" target="_blank" rel="noopener">Pages</a>
+        </nav>
+      </header>
+
+      {data ? (
+        <>
+          <div className="metrics">
+            <MetricCard title="Seasonal naive" m={data.metrics.seasonal_naive} />
+            <MetricCard title="Gradient boosting" m={data.metrics.gbm} />
+          </div>
+          <ForecastChart data={data} />
+        </>
+      ) : <p className="loading">Loading forecast…</p>}
+
+      <footer>
+        Source: PJME hourly load (PJM Interconnection).
+        Models: <code>SeasonalNaive</code> (week-ago value) and <code>HistGradientBoostingRegressor</code> on calendar + lag features.
+      </footer>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
