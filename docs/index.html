@@ -9,8 +9,8 @@
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  :root { color-scheme: light dark; }
-  body { font: 15px/1.5 system-ui, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; }
+  :root { color-scheme: light; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; background: #fff; color: #111; }
   header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
   h1 { margin: 0 0 .25rem; }
   .sub { color: #666; margin-bottom: 1.25rem; }
@@ -24,11 +24,6 @@
   canvas { width: 100% !important; height: 420px !important; }
   footer { color: #888; font-size: .85rem; margin-top: 1.5rem; }
   .loading { color: #888; padding: 2rem 0; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #111; color: #eee; }
-    .sub, .card dt, footer, .loading { color: #aaa; }
-    .card { border-color: #333; }
-  }
 </style>
 </head>
 <body>
